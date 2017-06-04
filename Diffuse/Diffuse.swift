@@ -198,7 +198,7 @@ public extension UIImage {
         }
     }
     
-    @available(*, introduced: 2.0, deprecated: 2.0, message: "Use -[Diffuse blurLevel:] instead.")
+    @available(*, introduced: 2.0, deprecated: 2.0, message: "Use -[Diffuse blur2Level:] instead.")
     func blur(level: CGFloat) -> UIImage? {
         
         guard self.cgImage != nil else { return nil }
