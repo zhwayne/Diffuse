@@ -45,13 +45,30 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
     
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         let `cell` = cell as! Cell
+        
+        cell.diffuse.backgroundColor = nil;
         cell.diffuse.shadow.opacity = 0.8
-        cell.diffuse.shadow.offset = CGSize(width: 0, height: 30)
-        cell.diffuse.shadow.range = 0
-        cell.diffuse.shadow.level = 35
-        cell.diffuse.shadow.brightness = 0.8
+        cell.diffuse.shadow.offset = CGSize(width: 0, height: 25)
+        cell.diffuse.shadow.range = 40
+        cell.diffuse.shadow.level = 25
+        cell.diffuse.shadow.brightness = 1
         cell.diffuse.shadow.customColor = UIColor.red
-        cell.diffuse.contentView = UIImageView(image: UIImage(contentsOfFile: Bundle.main.path(forResource: images[indexPath.row], ofType: "jpeg")!))
+        cell.perform({ [unowned cell] in
+            cell.diffuse.imageView?.image = UIImage(contentsOfFile: Bundle.main.path(forResource: self.images[indexPath.row], ofType: "jpeg")!)
+            cell.diffuse.refresh()
+        }, thread: Thread.main, mode: RunLoopMode.commonModes)
+        
+        cell.diffuse2.backgroundColor = nil;
+        cell.diffuse2.shadow.opacity = 0.8
+        cell.diffuse2.shadow.offset = CGSize(width: 0, height: 15)
+        cell.diffuse2.shadow.range = 0
+        cell.diffuse2.shadow.level = 20
+        cell.diffuse2.shadow.brightness = 0.8
+        cell.diffuse2.shadow.customColor = UIColor.red
+        cell.perform({ [unowned cell] in
+            cell.diffuse2.imageView?.image = UIImage(contentsOfFile: Bundle.main.path(forResource: self.images[indexPath.row], ofType: "jpeg")!)
+            cell.diffuse2.refresh()
+            }, thread: Thread.main, mode: RunLoopMode.commonModes)
     }
 }
 

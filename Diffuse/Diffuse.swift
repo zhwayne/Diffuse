@@ -73,29 +73,6 @@ public class Diffuse: UIView {
     /// contents of the view.
     public var mode: DiffuseMode = .auto
     
-    /// The contentView is used to set up a custom view to display the content. 
-    /// All shadows also depend on this view.
-    public var contentView: UIView! {
-        didSet {
-            if contentView != oldValue {
-                if oldValue != nil {
-                    oldValue.removeFromSuperview()
-                }
-                
-                addSubview(contentView)
-            }
-        }
-    }
-    
-    public override var backgroundColor: UIColor? {
-        set {
-            super.backgroundColor = newValue
-            contentView?.backgroundColor = newValue
-        } get {
-            return super.backgroundColor
-        }
-    }
-    
     public var shadow: Shadow = Shadow()
     
     private let shadowLayer: CALayer = CALayer()
@@ -129,59 +106,75 @@ public class Diffuse: UIView {
         shadowLayer.contentsScale = UIScreen.main.scale
         shadowLayer.shouldRasterize = true
         shadowLayer.rasterizationScale = UIScreen.main.scale
-        layer.addSublayer(shadowLayer)
-        
-        let view = UIView()
-        view.backgroundColor = (shadow.customColor ?? backgroundColor) ?? UIColor.groupTableViewBackground
-        contentView = view
+        layer.insertSublayer(shadowLayer, at: 0)
     }
     
     public override func layoutSubviews() {
         
         super.layoutSubviews()
+        refresh()
+    }
+    
+    public func refresh() {
         
-        contentView.frame = bounds
-        contentView.setNeedsUpdateConstraints()
-        contentView.updateConstraintsIfNeeded()
- 
-        let shadowOriginImage: UIImage?
-        
-        if mode == .auto {
-            shadowOriginImage = contentView.snapshot()?.light(level: shadow.brightness)
-        } else {
-            let view = UIView(frame: bounds)
-            view.backgroundColor = shadow.customColor
-            shadowOriginImage = view.snapshot()?.light(level: shadow.brightness)
-        }
-        
-        let shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + shadow.level)
-        shadowWithSpaceImage?.blurAsync(level: shadow.level, complate: { (originImage, image) in
-            var shadowBluredImage = image?.resize(byAdd: -(self.shadow.level));
+        DispatchQueue.global(qos: DispatchQoS.QoSClass.userInteractive).async {
+            let shadowOriginImage: UIImage?
+            
+            if self.mode == .auto {
+                shadowOriginImage = self.snapshot()?.light(level: self.shadow.brightness)
+            } else {
+                let view = UIView(frame: self.bounds)
+                view.backgroundColor = self.shadow.customColor
+                shadowOriginImage = view.snapshot()?.light(level: self.shadow.brightness)
+            }
+            
+            var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
+            shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
+            
+            var shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level));
             shadowBluredImage = shadowBluredImage?.resize(byAdd: self.shadow.range)
             let shadowSize = (shadowBluredImage != nil) ? shadowBluredImage!.size : self.bounds.size
-            self.shadowLayer.contents = shadowBluredImage?.cgImage
-            self.shadowLayer.opacity = Float(self.shadow.opacity)
             
-            CATransaction.begin()
-            CATransaction.setDisableActions(true)
-            CATransaction.setAnimationDuration(0)
-            self.shadowLayer.frame = CGRect(center: CGPoint(x: self.bounds.width / 2 + self.shadow.offset.width,
-                                                       y: self.bounds.height / 2 + self.shadow.offset.height),
-                                       size: shadowSize)
-            CATransaction.commit()
-        })
+            self.perform({[weak self] in
+                guard self != nil else {
+                    return
+                }
+                
+                self!.shadowLayer.contents = shadowBluredImage?.cgImage
+                self!.shadowLayer.opacity = Float(self!.shadow.opacity)
+                
+                CATransaction.begin()
+                CATransaction.setDisableActions(true)
+                CATransaction.setAnimationDuration(0)
+                self!.shadowLayer.frame = CGRect(center: CGPoint(x: self!.bounds.width / 2 + self!.shadow.offset.width,
+                                                                y: self!.bounds.height / 2 + self!.shadow.offset.height),
+                                                size: shadowSize)
+                CATransaction.commit()
+                
+            }, thread: Thread.main, mode: RunLoopMode.commonModes)
+        }
+    }
+}
+
+public extension NSObject {
+    func perform(_ block: () -> Void, thread: Thread, mode: RunLoopMode) {
+        self.perform(#selector(performBlockWith(object:)), on: thread, with: block, waitUntilDone: false, modes: [mode.rawValue])
+    }
+    
+    @objc private func performBlockWith(object: Any?) {
+        (object as! (() -> Void))()
     }
 }
 
 
-fileprivate extension CGRect {
+public extension CGRect {
     init(center: CGPoint, size: CGSize) {
         let point = CGPoint(x: center.x - size.width * 0.5, y: center.y - size.height * 0.5)
         self.init(origin: point, size: size)
     }
 }
 
-fileprivate extension UIView {
+public extension UIView {
     
     func snapshot() -> UIImage? {
         UIGraphicsBeginImageContextWithOptions(bounds.size, isOpaque, UIScreen.main.scale)
@@ -196,15 +189,13 @@ fileprivate extension UIView {
 }
 
 
-fileprivate extension UIImage {
+public extension UIImage {
     
     func blurAsync(level: CGFloat, complate: @escaping (UIImage, UIImage?) -> Void) {
         
         DispatchQueue.global(qos: DispatchQoS.QoSClass.userInteractive).async {
             let image = self.blur(level: level)
-            DispatchQueue.main.sync {
-                complate(self, image)
-            }
+            complate(self, image)
         }
     }
     

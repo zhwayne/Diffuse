@@ -9,7 +9,8 @@
 import UIKit
 
 class Cell: UITableViewCell {
-    @IBOutlet weak var diffuse: Diffuse!
+    @IBOutlet weak var diffuse: ShadowImageView!
+    @IBOutlet weak var diffuse2: ShadowImageView!
 
     override func awakeFromNib() {
         super.awakeFromNib()
