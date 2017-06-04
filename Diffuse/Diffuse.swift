@@ -77,16 +77,6 @@ public class Diffuse: UIView {
     
     private let shadowLayer: CALayer = CALayer()
     
-    
-    /// Once you have changed some properties, you need to call this method to 
-    /// update the view for generating new shadows.
-    final public func update() {
-        DispatchQueue.main.async {
-            self.setNeedsLayout()
-            self.layoutIfNeeded()
-        }
-    }
-    
     public override init(frame: CGRect) {
         super.init(frame: frame)
         initialize()
@@ -115,18 +105,23 @@ public class Diffuse: UIView {
         refresh()
     }
     
-    public func refresh() {
+    /// Once you have changed some properties, you need to call this method to
+    /// update the view for generating new shadows.
+    final public func refresh() {
         
         DispatchQueue.global(qos: DispatchQoS.QoSClass.userInteractive).async {
-            let shadowOriginImage: UIImage?
+            
+            var shadowOriginImage: UIImage?
             
             if self.mode == .auto {
-                shadowOriginImage = self.snapshot()?.light(level: self.shadow.brightness)
+                shadowOriginImage = self.snapshot()
             } else {
                 let view = UIView(frame: self.bounds)
                 view.backgroundColor = self.shadow.customColor
-                shadowOriginImage = view.snapshot()?.light(level: self.shadow.brightness)
+                shadowOriginImage = view.snapshot()
             }
+            shadowOriginImage = shadowOriginImage?.light(level: self.shadow.brightness)
+            
             
             var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
             shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
@@ -134,7 +129,7 @@ public class Diffuse: UIView {
             var shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level));
             shadowBluredImage = shadowBluredImage?.resize(byAdd: self.shadow.range)
             let shadowSize = (shadowBluredImage != nil) ? shadowBluredImage!.size : self.bounds.size
-            
+
             self.perform({[weak self] in
                 guard self != nil else {
                     return
@@ -181,7 +176,9 @@ public extension UIView {
         guard let ctx = UIGraphicsGetCurrentContext() else {
             return nil
         }
-        layer.render(in: ctx)
+        ctx.interpolationQuality = .none
+         layer.render(in: ctx)
+//        drawHierarchy(in: bounds, afterScreenUpdates: true)
         defer { UIGraphicsEndImageContext() }
         let image = UIGraphicsGetImageFromCurrentImageContext()
         return image

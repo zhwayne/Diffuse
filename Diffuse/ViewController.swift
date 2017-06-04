@@ -22,11 +22,11 @@ class ViewController: UIViewController {
     }
 
     fileprivate let images = ["timg-1", "timg-2", "timg-3", "timg-4", "timg-5", "timg-6",
-                              "timg-1", "timg-2", "timg-3", "timg-4", "timg-5", "timg-6",
-                              "timg-1", "timg-2", "timg-3", "timg-4", "timg-5", "timg-6",
-                              "timg-1", "timg-2", "timg-3", "timg-4", "timg-5", "timg-6",
-                              "timg-1", "timg-2", "timg-3", "timg-4", "timg-5", "timg-6",
-                              "timg-1", "timg-2", "timg-3", "timg-4", "timg-5", "timg-6"]
+                              "timg-2", "timg-3", "timg-4", "timg-5", "timg-6", "timg-1",
+                              "timg-3", "timg-4", "timg-5", "timg-6", "timg-1", "timg-2",
+                              "timg-4", "timg-5", "timg-6", "timg-1", "timg-2", "timg-3",
+                              "timg-5", "timg-6", "timg-1", "timg-2", "timg-3", "timg-4",
+                              "timg-6", "timg-1", "timg-2", "timg-3", "timg-4", "timg-5"]
 }
 
 
