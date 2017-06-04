@@ -193,11 +193,12 @@ public extension UIImage {
     func blurAsync(level: CGFloat, complate: @escaping (UIImage, UIImage?) -> Void) {
         
         DispatchQueue.global(qos: DispatchQoS.QoSClass.userInteractive).async {
-            let image = self.blur(level: level)
+            let image = self.blur2(level: level)
             complate(self, image)
         }
     }
     
+    @available(*, introduced: 2.0, deprecated: 2.0, message: "Use -[Diffuse blurLevel:] instead.")
     func blur(level: CGFloat) -> UIImage? {
         
         guard self.cgImage != nil else { return nil }
