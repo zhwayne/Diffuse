@@ -44,11 +44,11 @@
                                                     </constraints>
                                                 </view>
                                                 <view contentMode="scaleToFill" translatesAutoresizingMaskIntoConstraints="NO" id="vj1-K0-hjc" customClass="ShadowImageView" customModule="Diffuse" customModuleProvider="target">
-                                                    <rect key="frame" x="63" y="60" width="80" height="80"/>
+                                                    <rect key="frame" x="78" y="75" width="50" height="50"/>
                                                     <color key="backgroundColor" red="0.40000000600000002" green="0.40000000600000002" blue="1" alpha="1" colorSpace="calibratedRGB"/>
                                                     <constraints>
                                                         <constraint firstAttribute="width" secondItem="vj1-K0-hjc" secondAttribute="height" multiplier="1:1" id="7vx-zG-7rf"/>
-                                                        <constraint firstAttribute="width" constant="80" id="hFg-0g-RTA"/>
+                                                        <constraint firstAttribute="width" constant="50" id="hFg-0g-RTA"/>
                                                         <constraint firstAttribute="width" secondItem="vj1-K0-hjc" secondAttribute="height" multiplier="1:1" id="wOW-qn-ajJ"/>
                                                     </constraints>
                                                 </view>

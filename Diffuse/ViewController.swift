@@ -47,11 +47,11 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         let `cell` = cell as! Cell
         
         cell.diffuse.backgroundColor = nil;
-        cell.diffuse.shadow.opacity = 0.8
-        cell.diffuse.shadow.offset = CGSize(width: 0, height: 25)
-        cell.diffuse.shadow.range = 40
-        cell.diffuse.shadow.level = 25
-        cell.diffuse.shadow.brightness = 1
+        cell.diffuse.shadow.opacity = 0.7
+        cell.diffuse.shadow.offset = CGSize(width: 0, height: 15)
+        cell.diffuse.shadow.range = 60
+        cell.diffuse.shadow.level = 30
+        cell.diffuse.shadow.brightness = 0.8
         cell.diffuse.shadow.customColor = UIColor.red
         cell.perform({ [unowned cell] in
             cell.diffuse.imageView?.image = UIImage(contentsOfFile: Bundle.main.path(forResource: self.images[indexPath.row], ofType: "jpeg")!)
@@ -59,10 +59,10 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         }, thread: Thread.main, mode: RunLoopMode.commonModes)
         
         cell.diffuse2.backgroundColor = nil;
-        cell.diffuse2.shadow.opacity = 0.8
+        cell.diffuse2.shadow.opacity = 0.6
         cell.diffuse2.shadow.offset = CGSize(width: 0, height: 15)
         cell.diffuse2.shadow.range = 0
-        cell.diffuse2.shadow.level = 20
+        cell.diffuse2.shadow.level = 10
         cell.diffuse2.shadow.brightness = 0.8
         cell.diffuse2.shadow.customColor = UIColor.red
         cell.perform({ [unowned cell] in

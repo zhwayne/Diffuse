@@ -9,6 +9,7 @@
 import UIKit
 import CoreImage
 import QuartzCore
+import Accelerate
 
 
 /**
@@ -51,7 +52,7 @@ public class Diffuse: UIView {
         /// The range used to set the rendering range of the shadow. Defaults to 0.
         public var range: CGFloat = 0
         
-        /// The brightness used to set the brightness of the shadows. The value 
+        /// The brightness used to set the brightness of the shadows. The value
         /// range is [0, 1]. Defaults to 1.
         public var brightness: CGFloat = 1 {
             didSet {
@@ -63,13 +64,13 @@ public class Diffuse: UIView {
             }
         }
         
-        /// The customColor used to provide a shadow color when work on 
+        /// The customColor used to provide a shadow color when work on
         /// DiffuseMode.custom.
         public var customColor: UIColor?
     }
     
-    /// Used to set the mode for generating shadows. If you set it to `auto`, 
-    /// it will automatically generate a picture as a shadow based on the 
+    /// Used to set the mode for generating shadows. If you set it to `auto`,
+    /// it will automatically generate a picture as a shadow based on the
     /// contents of the view.
     public var mode: DiffuseMode = .auto
     
@@ -124,12 +125,12 @@ public class Diffuse: UIView {
             
             
             var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
-            shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
+            shadowWithSpaceImage = shadowWithSpaceImage?.blur2(level: self.shadow.level)
             
             var shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level));
             shadowBluredImage = shadowBluredImage?.resize(byAdd: self.shadow.range)
             let shadowSize = (shadowBluredImage != nil) ? shadowBluredImage!.size : self.bounds.size
-
+            
             self.perform({[weak self] in
                 guard self != nil else {
                     return
@@ -142,11 +143,11 @@ public class Diffuse: UIView {
                 CATransaction.setDisableActions(true)
                 CATransaction.setAnimationDuration(0)
                 self!.shadowLayer.frame = CGRect(center: CGPoint(x: self!.bounds.width / 2 + self!.shadow.offset.width,
-                                                                y: self!.bounds.height / 2 + self!.shadow.offset.height),
-                                                size: shadowSize)
+                                                                 y: self!.bounds.height / 2 + self!.shadow.offset.height),
+                                                 size: shadowSize)
                 CATransaction.commit()
                 
-            }, thread: Thread.main, mode: RunLoopMode.commonModes)
+                }, thread: Thread.main, mode: RunLoopMode.commonModes)
         }
     }
 }
@@ -177,14 +178,15 @@ public extension UIView {
             return nil
         }
         ctx.interpolationQuality = .none
-         layer.render(in: ctx)
-//        drawHierarchy(in: bounds, afterScreenUpdates: true)
+        layer.render(in: ctx)
+        // drawHierarchy(in: bounds, afterScreenUpdates: true)
         defer { UIGraphicsEndImageContext() }
         let image = UIGraphicsGetImageFromCurrentImageContext()
         return image
     }
 }
 
+private let blur_iterations = 4
 
 public extension UIImage {
     
@@ -211,6 +213,77 @@ public extension UIImage {
         }
         
         return nil
+    }
+    
+    func blur2(level: CGFloat) -> UIImage? {
+        guard floorf(Float(size.width)) * floorf(Float(size.height)) > 0 else {
+            return self
+        }
+        var boxSize = UInt32(level * scale)
+        if boxSize % 2 == 0 {
+            boxSize = boxSize + 1
+        }
+        
+        var imageRef = cgImage
+        if imageRef?.bitsPerPixel != 32 || imageRef?.bitsPerComponent != 8 || imageRef?.bitmapInfo.contains(.alphaInfoMask) == false {
+            UIGraphicsBeginImageContextWithOptions(size, false, scale)
+            draw(at: .zero)
+            imageRef = UIGraphicsGetImageFromCurrentImageContext()?.cgImage
+            UIGraphicsEndImageContext()
+        }
+        
+        guard imageRef != nil else {
+            return self
+        }
+        
+        var buffer1 = vImage_Buffer()
+        var buffer2 = vImage_Buffer()
+        buffer1.width = vImagePixelCount.init(imageRef!.width)
+        buffer1.height = vImagePixelCount(imageRef!.height)
+        buffer1.rowBytes = imageRef!.bytesPerRow
+        buffer2.width = vImagePixelCount.init(imageRef!.width)
+        buffer2.height = vImagePixelCount(imageRef!.height)
+        buffer2.rowBytes = imageRef!.bytesPerRow
+        
+        let bytes = Int(buffer1.rowBytes * Int(buffer1.height))
+        buffer1.data = malloc(bytes)
+        buffer2.data = malloc(bytes)
+        
+        guard buffer1.data != nil && buffer2.data != nil else {
+            free(buffer1.data)
+            free(buffer2.data)
+            return self
+        }
+        
+        let provider = imageRef!.dataProvider
+        let dataSource: CFData? = provider?.data
+        guard dataSource != nil else {
+            return self
+        }
+        
+        let tempBuffer = malloc(Int(vImageBoxConvolve_ARGB8888(&buffer1, &buffer2, nil, 0, 0, boxSize, boxSize, nil, vImage_Flags(kvImageEdgeExtend + kvImageGetTempBufferSize))))
+        let dataSourceData = CFDataGetBytePtr(dataSource)
+        let dataSourceLength = CFDataGetLength(dataSource)
+        memcpy(buffer1.data, dataSourceData, min(bytes, dataSourceLength))
+        
+        for _ in 0..<blur_iterations {
+            vImageBoxConvolve_ARGB8888(&buffer1, &buffer2, tempBuffer, 0, 0, boxSize, boxSize, nil, vImage_Flags(kvImageEdgeExtend))
+            
+            let tmp = buffer1.data
+            buffer1.data = buffer2.data
+            buffer2.data = tmp
+        }
+        
+        free(buffer2.data)
+        free(tempBuffer)
+        
+        let ctx = CGContext.init(data: buffer1.data, width: Int(buffer1.width), height: Int(buffer1.height), bitsPerComponent: 8, bytesPerRow: buffer1.rowBytes, space: imageRef!.colorSpace!, bitmapInfo: imageRef!.bitmapInfo.rawValue)
+        
+        imageRef = ctx!.makeImage()
+        let image = UIImage(cgImage: imageRef!, scale: scale, orientation: imageOrientation)
+        free(buffer1.data)
+        
+        return image
     }
     
     func light(level: CGFloat) -> UIImage? {
