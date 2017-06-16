@@ -117,15 +117,13 @@ public class Diffuse: UIView {
             if self.mode == .auto {
                 shadowOriginImage = self.snapshot()
             } else {
-                let view = UIView(frame: self.bounds)
-                view.backgroundColor = self.shadow.customColor
-                shadowOriginImage = view.snapshot()
+                shadowOriginImage = self.shadow.customColor?.image(size: self.bounds.size)
             }
             shadowOriginImage = shadowOriginImage?.light(level: self.shadow.brightness)
             
             
             var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
-            shadowWithSpaceImage = shadowWithSpaceImage?.blur2(level: self.shadow.level)
+            shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
             
             var shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level));
             shadowBluredImage = shadowBluredImage?.resize(byAdd: self.shadow.range)
@@ -177,7 +175,7 @@ public extension UIView {
         guard let ctx = UIGraphicsGetCurrentContext() else {
             return nil
         }
-        ctx.interpolationQuality = .none
+        ctx.interpolationQuality = .low
         layer.render(in: ctx)
         // drawHierarchy(in: bounds, afterScreenUpdates: true)
         defer { UIGraphicsEndImageContext() }
@@ -186,37 +184,22 @@ public extension UIView {
     }
 }
 
-private let blur_iterations = 4
 
 public extension UIImage {
+    
+    private var blurIterations: UInt {
+        return 3
+    }
     
     func blurAsync(level: CGFloat, complate: @escaping (UIImage, UIImage?) -> Void) {
         
         DispatchQueue.global(qos: DispatchQoS.QoSClass.userInteractive).async {
-            let image = self.blur2(level: level)
+            let image = self.blur(level: level)
             complate(self, image)
         }
     }
     
-    @available(*, introduced: 2.0, deprecated: 2.0, message: "Use -[Diffuse blur2Level:] instead.")
     func blur(level: CGFloat) -> UIImage? {
-        
-        guard self.cgImage != nil else { return nil }
-        guard let filter = CIFilter(name: "CIGaussianBlur") else { return nil }
-        
-        let ciImage = CIImage(cgImage: self.cgImage!)
-        filter.setValue(ciImage, forKey: kCIInputImageKey)
-        filter.setValue(level, forKey: kCIInputRadiusKey)
-        let ctx = CIContext()
-        if let outputImage = filter.outputImage,
-            let cgImage = ctx.createCGImage(outputImage, from: ciImage.extent) {
-            return UIImage(cgImage: cgImage, scale: scale, orientation: .up)
-        }
-        
-        return nil
-    }
-    
-    func blur2(level: CGFloat) -> UIImage? {
         guard floorf(Float(size.width)) * floorf(Float(size.height)) > 0 else {
             return self
         }
@@ -267,7 +250,7 @@ public extension UIImage {
         let dataSourceLength = CFDataGetLength(dataSource)
         memcpy(buffer1.data, dataSourceData, min(bytes, dataSourceLength))
         
-        for _ in 0..<blur_iterations {
+        for _ in 0..<blurIterations {
             vImageBoxConvolve_ARGB8888(&buffer1, &buffer2, tempBuffer, 0, 0, boxSize, boxSize, nil, vImage_Flags(kvImageEdgeExtend))
             
             let tmp = buffer1.data
@@ -304,7 +287,10 @@ public extension UIImage {
         defer { UIGraphicsEndImageContext() }
         return UIGraphicsGetImageFromCurrentImageContext()
     }
-    
+}
+
+
+extension UIImage {
     func addTransparentSpace(_ space: CGFloat) -> UIImage {
         
         guard space > 0 else { return self }
@@ -340,5 +326,17 @@ public extension UIImage {
         }
         
         return self
+    }
+}
+
+extension UIColor {
+    
+    func image(size: CGSize) -> UIImage? {
+        UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)
+        let ctx = UIGraphicsGetCurrentContext()
+        self.setFill()
+        ctx?.fill(CGRect(origin: .zero, size: size))
+        defer { UIGraphicsEndImageContext() }
+        return UIGraphicsGetImageFromCurrentImageContext()
     }
 }
