@@ -60,8 +60,8 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse2.backgroundColor = nil
         cell.diffuse2.shadow.opacity = 0.6
         cell.diffuse2.shadow.offset = CGSize(width: 0, height: 12)
-        cell.diffuse2.shadow.range = 0
-        cell.diffuse2.shadow.level = 5
+        cell.diffuse2.shadow.range = -2
+        cell.diffuse2.shadow.level = 10
         cell.diffuse2.shadow.brightness = 0.8
         cell.perform({ [unowned cell] in
             cell.diffuse2.imageView?.image = UIImage(contentsOfFile: Bundle.main.path(forResource: self.images[indexPath.row], ofType: "jpeg")!)

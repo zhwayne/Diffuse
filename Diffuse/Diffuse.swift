@@ -134,7 +134,8 @@ public class Diffuse: UIView {
                     return
                 }
                 
-                self!.shadowLayer.contents = shadowBluredImage?.cgImage
+                let contents = shadowBluredImage?.cgImage
+                self!.shadowLayer.contents = contents
                 self!.shadowLayer.opacity = Float(self!.shadow.opacity)
                 
                 CATransaction.begin()
@@ -151,7 +152,7 @@ public class Diffuse: UIView {
 }
 
 public extension NSObject {
-    func perform(_ block: () -> Void, thread: Thread, mode: RunLoopMode) {
+    func perform(_ block: @escaping () -> Void, thread: Thread, mode: RunLoopMode) {
         self.perform(#selector(performBlockWith(object:)), on: thread, with: block, waitUntilDone: false, modes: [mode.rawValue])
     }
     
