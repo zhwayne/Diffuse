@@ -52,6 +52,7 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse.shadow.range = 60
         cell.diffuse.shadow.level = 30
         cell.diffuse.shadow.brightness = 0.8
+        cell.diffuse.identify = "\(self.images[indexPath.row])-0"
         cell.perform({ [unowned cell] in
             cell.diffuse.imageView?.image = UIImage(contentsOfFile: Bundle.main.path(forResource: self.images[indexPath.row], ofType: "jpeg")!)
             cell.diffuse.refresh()
@@ -63,10 +64,12 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse2.shadow.range = -2
         cell.diffuse2.shadow.level = 10
         cell.diffuse2.shadow.brightness = 0.8
+        cell.diffuse2.identify = "\(self.images[indexPath.row])-1"
         cell.perform({ [unowned cell] in
             cell.diffuse2.imageView?.image = UIImage(contentsOfFile: Bundle.main.path(forResource: self.images[indexPath.row], ofType: "jpeg")!)
             cell.diffuse2.refresh()
-            }, thread: Thread.main, mode: RunLoopMode.commonModes)
+        }, thread: Thread.main, mode: RunLoopMode.defaultRunLoopMode)
+        
     }
 }
 

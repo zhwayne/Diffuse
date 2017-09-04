@@ -69,6 +69,12 @@ public class Diffuse: UIView {
         public var customColor: UIColor?
     }
     
+    
+    private static let blurredImageCache = NSCache<AnyObject, UIImage>()
+    
+    
+    public var identify: String?
+    
     /// Used to set the mode for generating shadows. If you set it to `auto`,
     /// it will automatically generate a picture as a shadow based on the
     /// contents of the view.
@@ -110,8 +116,22 @@ public class Diffuse: UIView {
     /// update the view for generating new shadows.
     final public func refresh() {
         
-        DispatchQueue.global(qos: DispatchQoS.QoSClass.userInteractive).async {
-            
+        func updateContents(_ contents: CGImage?, shadowSize: CGSize?) {
+            self.shadowLayer.contents = contents
+            self.shadowLayer.opacity = Float(self.shadow.opacity)
+            self.shadowLayer.frame = CGRect(center: CGPoint(x: self.bounds.width / 2 + self.shadow.offset.width,
+                                                            y: self.bounds.height / 2 + self.shadow.offset.height),
+                                            size: shadowSize ?? self.bounds.size)
+        }
+        
+        // First, find blurred image in cache. If not found, create it.
+        if let key = self.identify as NSString?,
+            let blurredImage = Diffuse.blurredImageCache.object(forKey: key) {
+            updateContents(blurredImage.cgImage, shadowSize: blurredImage.size)
+            return
+        }
+        
+        DispatchQueue.global().async {
             var shadowOriginImage: UIImage?
             
             if self.mode == .auto {
@@ -125,31 +145,19 @@ public class Diffuse: UIView {
             var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
             shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
             
-            var shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level));
-            shadowBluredImage = shadowBluredImage?.resize(byAdd: self.shadow.range)
-            let shadowSize = (shadowBluredImage != nil) ? shadowBluredImage!.size : self.bounds.size
-            
-            self.perform({[weak self] in
-                guard self != nil else {
-                    return
-                }
-                
-                let contents = shadowBluredImage?.cgImage
-                self!.shadowLayer.contents = contents
-                self!.shadowLayer.opacity = Float(self!.shadow.opacity)
-                
-                CATransaction.begin()
-                CATransaction.setDisableActions(true)
-                CATransaction.setAnimationDuration(0)
-                self!.shadowLayer.frame = CGRect(center: CGPoint(x: self!.bounds.width / 2 + self!.shadow.offset.width,
-                                                                 y: self!.bounds.height / 2 + self!.shadow.offset.height),
-                                                 size: shadowSize)
-                CATransaction.commit()
-                
-                }, thread: Thread.main, mode: RunLoopMode.commonModes)
+            if let shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level)).resize(byAdd: self.shadow.range) {
+                self.perform({
+                    if let key = self.identify as NSString? {
+                        Diffuse.blurredImageCache.setObject(shadowBluredImage, forKey: key)
+                    }
+                    updateContents(shadowBluredImage.cgImage, shadowSize: shadowBluredImage.size)
+                }, thread: .main, mode: .commonModes)
+            }
         }
+        
     }
 }
+
 
 public extension NSObject {
     func perform(_ block: @escaping () -> Void, thread: Thread, mode: RunLoopMode) {
@@ -341,3 +349,4 @@ extension UIColor {
         return UIGraphicsGetImageFromCurrentImageContext()
     }
 }
+
