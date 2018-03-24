@@ -21,6 +21,7 @@
 		B03F70081EA09F2C004A82D0 /* timg-1.jpeg in Resources */ = {isa = PBXBuildFile; fileRef = B03F70021EA09F2C004A82D0 /* timg-1.jpeg */; };
 		B03F700A1EA09FDF004A82D0 /* Cell.swift in Sources */ = {isa = PBXBuildFile; fileRef = B03F70091EA09FDF004A82D0 /* Cell.swift */; };
 		B0C792721EE3163A00307649 /* ShadowImageView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0C792711EE3163A00307649 /* ShadowImageView.swift */; };
+		B0EE5F2820668E630047F638 /* FPSLabel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B0EE5F2720668E620047F638 /* FPSLabel.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
@@ -40,6 +41,7 @@
 		B03F70021EA09F2C004A82D0 /* timg-1.jpeg */ = {isa = PBXFileReference; lastKnownFileType = image.jpeg; path = "timg-1.jpeg"; sourceTree = "<group>"; };
 		B03F70091EA09FDF004A82D0 /* Cell.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = Cell.swift; sourceTree = "<group>"; };
 		B0C792711EE3163A00307649 /* ShadowImageView.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = ShadowImageView.swift; sourceTree = "<group>"; };
+		B0EE5F2720668E620047F638 /* FPSLabel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = FPSLabel.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -74,6 +76,7 @@
 			children = (
 				B03F6FE91EA05F18004A82D0 /* AppDelegate.swift */,
 				B03F6FEB1EA05F18004A82D0 /* ViewController.swift */,
+				B0EE5F2720668E620047F638 /* FPSLabel.swift */,
 				B03F6FFB1EA05F85004A82D0 /* Diffuse.swift */,
 				B0C792711EE3163A00307649 /* ShadowImageView.swift */,
 				B03F70091EA09FDF004A82D0 /* Cell.swift */,
@@ -172,6 +175,7 @@
 			files = (
 				B03F6FEC1EA05F18004A82D0 /* ViewController.swift in Sources */,
 				B03F700A1EA09FDF004A82D0 /* Cell.swift in Sources */,
+				B0EE5F2820668E630047F638 /* FPSLabel.swift in Sources */,
 				B03F6FFC1EA05F85004A82D0 /* Diffuse.swift in Sources */,
 				B0C792721EE3163A00307649 /* ShadowImageView.swift in Sources */,
 				B03F6FEA1EA05F18004A82D0 /* AppDelegate.swift in Sources */,
@@ -317,7 +321,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhwayne.Diffuse;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 4.0;
 			};
 			name = Debug;
 		};
@@ -333,7 +337,7 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.zhwayne.Diffuse;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				PROVISIONING_PROFILE_SPECIFIER = "";
-				SWIFT_VERSION = 3.0;
+				SWIFT_VERSION = 4.0;
 			};
 			name = Release;
 		};

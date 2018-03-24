@@ -12,6 +12,7 @@ import QuartzCore
 import Accelerate
 
 
+
 /**
  A view with diffuse shadow effects.
  */
@@ -99,6 +100,7 @@ public class Diffuse: UIView {
     }
     
     private func initialize() {
+        
         shadowLayer.contentsGravity = kCAGravityResizeAspectFill
         shadowLayer.contentsScale = UIScreen.main.scale
         shadowLayer.shouldRasterize = true
@@ -107,7 +109,7 @@ public class Diffuse: UIView {
     }
     
     public override func layoutSubviews() {
-        
+
         super.layoutSubviews()
         refresh()
     }
@@ -119,15 +121,20 @@ public class Diffuse: UIView {
         func updateContents(_ contents: CGImage?, shadowSize: CGSize?) {
             self.shadowLayer.contents = contents
             self.shadowLayer.opacity = Float(self.shadow.opacity)
+            CATransaction.begin()
+            CATransaction.setAnimationDuration(0)
             self.shadowLayer.frame = CGRect(center: CGPoint(x: self.bounds.width / 2 + self.shadow.offset.width,
                                                             y: self.bounds.height / 2 + self.shadow.offset.height),
                                             size: shadowSize ?? self.bounds.size)
+            CATransaction.commit()
         }
         
         // First, find blurred image in cache. If not found, create it.
         if let key = self.identify as NSString?,
             let blurredImage = Diffuse.blurredImageCache.object(forKey: key) {
-            updateContents(blurredImage.cgImage, shadowSize: blurredImage.size)
+            self.perform({
+                updateContents(blurredImage.cgImage, shadowSize: blurredImage.size)
+            }, thread: .main, mode: .commonModes)
             return
         }
         
@@ -154,7 +161,7 @@ public class Diffuse: UIView {
                 }, thread: .main, mode: .commonModes)
             }
         }
-        
+    
     }
 }
 
@@ -180,7 +187,7 @@ public extension CGRect {
 public extension UIView {
     
     func snapshot() -> UIImage? {
-        UIGraphicsBeginImageContextWithOptions(bounds.size, isOpaque, UIScreen.main.scale)
+        UIGraphicsBeginImageContextWithOptions(bounds.size, false, UIScreen.main.scale)
         guard let ctx = UIGraphicsGetCurrentContext() else {
             return nil
         }

@@ -14,15 +14,17 @@ class ShadowImageView: Diffuse {
     
     override init(frame: CGRect) {
         super.init(frame: frame)
-        
+
         imageView = UIImageView()
+        imageView?.clipsToBounds = true
         self.addSubview(imageView!)
     }
     
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
-        
+
         imageView = UIImageView()
+        imageView?.clipsToBounds = true
         self.addSubview(imageView!)
     }
     
