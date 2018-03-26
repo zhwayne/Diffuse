@@ -5,8 +5,10 @@ demo:
 
 
 
-|       Png       |       Gif       |
+|       PNG       |       WEBP       |
 | :-------------: | :-------------: |
-| ![](./demo.png) | ![](./demo.gif) |
+| ![](./demo.png) | ![](./demo.webp) |
 
  
+
+

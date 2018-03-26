@@ -26,18 +26,24 @@ class ViewController: UIViewController {
     }
 
     private let imageNames = { () -> [String] in
-        let base = ["timg-1", "timg-2", "timg-3", "timg-4", "timg-5", "timg-6",
-                    "timg-2", "timg-3", "timg-4", "timg-5", "timg-6", "timg-1",
-                    "timg-3", "timg-4", "timg-5", "timg-6", "timg-1", "timg-2",
-                    "timg-4", "timg-5", "timg-6", "timg-1", "timg-2", "timg-3",
-                    "timg-5", "timg-6", "timg-1", "timg-2", "timg-3", "timg-4",
-                    "timg-6", "timg-1", "timg-2", "timg-3", "timg-4", "timg-5"]
-        return base + base + base + base + base + base + base
+        let base = ["1", "2", "3", "4", "5", "6",
+                    "2", "3", "4", "5", "6", "1",
+                    "3", "4", "5", "6", "1", "2",
+                    "4", "5", "6", "1", "2", "3",
+                    "5", "6", "1", "2", "3", "4",
+                    "6", "1", "2", "3", "4", "5"]
+
+        return (0..<50).reduce([], { (res, idx) -> [String] in
+            return res + base
+        })
     }()
     
     private lazy var images = {
-        return imageNames.map({ (imageName) -> UIImage in
-            return UIImage(contentsOfFile: Bundle.main.path(forResource: imageName, ofType: "jpeg")!)!
+        return imageNames.map({ (imageName) -> Data? in
+            guard let file = Bundle.main.path(forResource: imageName, ofType: "jpeg") else {
+                return nil
+            }
+            return (NSData.init(contentsOfFile: file) as Data?)
         })
     }()
 }
@@ -68,18 +74,22 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse.shadow.level = 6
         cell.diffuse.shadow.brightness = 0.7
         cell.diffuse.identify = "\(self.imageNames[indexPath.row])-0"
-        cell.diffuse.imageView?.image = self.images[indexPath.row]
+        if let data = self.images[indexPath.row] {
+            cell.diffuse.imageView?.image = UIImage(data: data)
+        }
         cell.diffuse.refresh()
         
         
         cell.diffuse2.backgroundColor = nil
-        cell.diffuse2.shadow.opacity = 0.6
+        cell.diffuse2.shadow.opacity = 0.7
         cell.diffuse2.shadow.offset = CGSize(width: 0, height: 12)
         cell.diffuse2.shadow.range = -2
-        cell.diffuse2.shadow.level = 15
-        cell.diffuse2.shadow.brightness = 0.75
+        cell.diffuse2.shadow.level = 10
+        cell.diffuse2.shadow.brightness = 0.9
         cell.diffuse2.identify = "\(self.imageNames[indexPath.row])-1"
-        cell.diffuse2.imageView?.image = self.images[indexPath.row]
+        if let data = self.images[indexPath.row] {
+            cell.diffuse2.imageView?.image = UIImage(data: data)
+        }
         cell.diffuse2.refresh()
         
     }

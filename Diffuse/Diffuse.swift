@@ -11,6 +11,34 @@ import CoreImage
 import QuartzCore
 import Accelerate
 
+private class DiffuseManager {
+    static var instance = DiffuseManager()
+    
+    var taskSet = [Any]()
+    
+    private var isListening = false
+    
+    func listenRunloop(_ runloop: CFRunLoop, activity: CFRunLoopActivity = .beforeSources) {
+        if isListening { return }
+        
+        isListening = true
+        let observer = CFRunLoopObserverCreateWithHandler(kCFAllocatorDefault, activity.rawValue, true, 0) { [unowned self]  (observer, activity) in
+            
+            if self.taskSet.count == 0 {
+                CFRunLoopRemoveObserver(runloop, observer, .commonModes)
+                self.isListening = false
+                return
+            }
+            
+            let task = self.taskSet.first! as! (() -> Void?)
+            task()
+            self.taskSet.removeFirst()
+            
+        }
+        
+        CFRunLoopAddObserver(runloop, observer, .commonModes)
+    }
+}
 
 
 /**
@@ -104,12 +132,13 @@ public class Diffuse: UIView {
         shadowLayer.contentsGravity = kCAGravityResizeAspectFill
         shadowLayer.contentsScale = UIScreen.main.scale
         shadowLayer.shouldRasterize = true
+        shadowLayer.drawsAsynchronously = true
         shadowLayer.rasterizationScale = UIScreen.main.scale
         layer.insertSublayer(shadowLayer, at: 0)
+        
     }
     
     public override func layoutSubviews() {
-
         super.layoutSubviews()
         refresh()
     }
@@ -117,6 +146,12 @@ public class Diffuse: UIView {
     /// Once you have changed some properties, you need to call this method to
     /// update the view for generating new shadows.
     final public func refresh() {
+//        makeTask()
+        DiffuseManager.instance.taskSet.append({ [weak self] in self?.makeTask() })
+        DiffuseManager.instance.listenRunloop(CFRunLoopGetMain())
+    }
+    
+    private func makeTask() {
         
         func updateContents(_ contents: CGImage?, shadowSize: CGSize?) {
             self.shadowLayer.contents = contents
@@ -139,32 +174,32 @@ public class Diffuse: UIView {
         }
         
         DispatchQueue.global().async {
-            var shadowOriginImage: UIImage?
-            
-            if self.mode == .auto {
-                shadowOriginImage = self.snapshot()
-            } else {
-                shadowOriginImage = self.shadow.customColor?.image(size: self.bounds.size)
-            }
-            shadowOriginImage = shadowOriginImage?.light(level: self.shadow.brightness)
-            
-            
-            var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
-            shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
-            
-            if let shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level)).resize(byAdd: self.shadow.range) {
-                self.perform({
-                    if let key = self.identify as NSString? {
-                        Diffuse.blurredImageCache.setObject(shadowBluredImage, forKey: key)
-                    }
-                    updateContents(shadowBluredImage.cgImage, shadowSize: shadowBluredImage.size)
-                }, thread: .main, mode: .commonModes)
-            }
+            autoreleasepool(invoking: { () -> Void in
+                var shadowOriginImage: UIImage?
+                
+                if self.mode == .auto {
+                    shadowOriginImage = self.snapshot()
+                } else {
+                    shadowOriginImage = self.shadow.customColor?.image(size: self.bounds.size)
+                }
+                shadowOriginImage = shadowOriginImage?.light(level: self.shadow.brightness)
+                
+                
+                var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
+                shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
+                
+                if let shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level)).resize(byAdd: self.shadow.range) {
+                    self.perform({
+                        if let key = self.identify as NSString? {
+                            Diffuse.blurredImageCache.setObject(shadowBluredImage, forKey: key)
+                        }
+                        updateContents(shadowBluredImage.cgImage, shadowSize: shadowBluredImage.size)
+                    }, thread: .main, mode: .commonModes)
+                }
+            })
         }
-    
     }
 }
-
 
 public extension NSObject {
     func perform(_ block: @escaping () -> Void, thread: Thread, mode: RunLoopMode) {
