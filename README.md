@@ -3,11 +3,12 @@ A view with diffuse shadow effects 😀.
 
 demo:
 
+PNG                
+![](./demo1.png)
 
-
-|       PNG       |       WEBP       |
-| :-------------: | :-------------: |
-| ![](./demo.png) | ![](./demo.webp) |
+<picture class="picture">
+  <source type="image/webp" srcset="demo.webp">
+</picture>
 
  
 
