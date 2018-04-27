@@ -8,33 +8,13 @@
 
 import UIKit
 
-class FPSLabel: UILabel {
+class FPSLabelTarget: NSObject {
+    
+    weak var lable: FPSLabel?
 
-    /*
-    // Only override draw() if you perform custom drawing.
-    // An empty implementation adversely affects performance during animation.
-    override func draw(_ rect: CGRect) {
-        // Drawing code
-    }
-    */
     
-    private var link: CADisplayLink!
     private var lastTime: TimeInterval = 0
-    private var count = 0
-    
-    override init(frame: CGRect) {
-        super.init(frame: frame)
-        link = CADisplayLink(target: self, selector: #selector(tick(sender:)))
-        link.add(to: RunLoop.current, forMode: .commonModes)
-    }
-    
-    required init?(coder aDecoder: NSCoder) {
-        super.init(coder: aDecoder)
-    }
-    
-    deinit {
-        link.invalidate()
-    }
+    private var count: Double = 0
     
     @objc func tick(sender: CADisplayLink) {
         if lastTime == 0 {
@@ -46,10 +26,42 @@ class FPSLabel: UILabel {
         let d = sender.timestamp - lastTime
         if d < 1 { return }
         lastTime = sender.timestamp
-        let fps = Double(count) / d
+        let fps = count / d
         count = 0
         
-        self.text = "\(Int(round(fps))) fps"
+        DispatchQueue.main.async {
+            self.lable?.text = "\(String(format: "%.2f", fps)) fps"
+        }
     }
+}
 
+class FPSLabel: UILabel {
+
+    /*
+    // Only override draw() if you perform custom drawing.
+    // An empty implementation adversely affects performance during animation.
+    override func draw(_ rect: CGRect) {
+        // Drawing code
+    }
+    */
+    
+    private var link: CADisplayLink!
+    
+    
+    override init(frame: CGRect) {
+        super.init(frame: frame)
+
+        let target = FPSLabelTarget()
+        target.lable = self
+        link = CADisplayLink(target: target, selector: #selector(FPSLabelTarget.tick(sender:)))
+        link.add(to: RunLoop.current, forMode: .commonModes)
+    }
+    
+    required init?(coder aDecoder: NSCoder) {
+        super.init(coder: aDecoder)
+    }
+    
+    deinit {
+        link.invalidate()
+    }
 }

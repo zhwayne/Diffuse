@@ -17,10 +17,11 @@ class Cell: UITableViewCell {
         // Initialization code
     }
 
-    override func setSelected(_ selected: Bool, animated: Bool) {
-        super.setSelected(selected, animated: animated)
 
-        // Configure the view for the selected state
+    override func layoutSubviews() {
+        super.layoutSubviews()
+        
+        diffuse.center = CGPoint(x: bounds.midX * 0.5 , y: bounds.midY)
+        diffuse2.center = CGPoint(x: bounds.midX * 1.5, y: bounds.midY)
     }
-
 }

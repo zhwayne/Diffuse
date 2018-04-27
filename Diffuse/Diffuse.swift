@@ -11,32 +11,69 @@ import CoreImage
 import QuartzCore
 import Accelerate
 
-private class DiffuseManager {
-    static var instance = DiffuseManager()
+
+public typealias DispatchOnceToken = String
+
+public extension DispatchQueue {
+
+    private static var _onceTokenSet = Set<DispatchOnceToken>()
     
-    var taskSet = [Any]()
-    
-    private var isListening = false
-    
-    func listenRunloop(_ runloop: CFRunLoop, activity: CFRunLoopActivity = .beforeSources) {
-        if isListening { return }
-        
-        isListening = true
-        let observer = CFRunLoopObserverCreateWithHandler(kCFAllocatorDefault, activity.rawValue, true, 0) { [unowned self]  (observer, activity) in
-            
-            if self.taskSet.count == 0 {
-                CFRunLoopRemoveObserver(runloop, observer, .commonModes)
-                self.isListening = false
-                return
-            }
-            
-            let task = self.taskSet.first! as! (() -> Void?)
-            task()
-            self.taskSet.removeFirst()
-            
+    public class func once(token: DispatchOnceToken, closure: () -> ()) {
+        objc_sync_enter(self)
+        defer {
+            objc_sync_exit(self)
         }
         
-        CFRunLoopAddObserver(runloop, observer, .commonModes)
+        if _onceTokenSet.contains(token) {
+            return
+        }
+        
+        _onceTokenSet.insert(token)
+        closure()
+    }
+}
+
+
+// stolen from YYAsyncLayer :)
+private class DiffuseTask: Hashable {
+    
+    var hashValue: Int {
+        return (target.hashValue ?? 0) ^ selector.hashValue
+    }
+    static func == (lhs: DiffuseTask, rhs: DiffuseTask) -> Bool {
+        if type(of: rhs) != type(of: lhs) { return false }
+        return lhs.target.isEqual(rhs.target) && lhs.selector == rhs.selector
+    }
+    
+    private static var _taskSet = Set<DiffuseTask>()
+    private var target: AnyObject
+    private var selector: Selector
+    
+    init(target: AnyObject, selector: Selector) {
+        self.target = target
+        self.selector = selector
+    }
+    
+    func commit() {
+        DiffuseTask.listenRunloop(CFRunLoopGetMain())
+        DiffuseTask._taskSet.insert(self)
+    }
+    
+    private static func listenRunloop(_ runloop: CFRunLoop, activity: CFRunLoopActivity = [.beforeWaiting, .exit]) {
+        
+        DispatchQueue.once(token: "listenRunloop") {
+            let observer = CFRunLoopObserverCreateWithHandler(kCFAllocatorDefault, activity.rawValue, true, 0xFFFFFF) { (observer, activity) in
+
+                if _taskSet.count == 0 { return }
+
+                let newTaskSet = _taskSet
+                _taskSet.removeAll()
+                
+                newTaskSet.forEach { _ = $0.target.perform($0.selector) }
+            }
+
+            CFRunLoopAddObserver(runloop, observer, .commonModes)
+        }
     }
 }
 
@@ -146,12 +183,10 @@ public class Diffuse: UIView {
     /// Once you have changed some properties, you need to call this method to
     /// update the view for generating new shadows.
     final public func refresh() {
-//        makeTask()
-        DiffuseManager.instance.taskSet.append({ [weak self] in self?.makeTask() })
-        DiffuseManager.instance.listenRunloop(CFRunLoopGetMain())
+        DiffuseTask(target: self, selector: #selector(makeTask)).commit()
     }
     
-    private func makeTask() {
+    @objc private func makeTask() {
         
         func updateContents(_ contents: CGImage?, shadowSize: CGSize?) {
             self.shadowLayer.contents = contents
@@ -178,7 +213,7 @@ public class Diffuse: UIView {
                 var shadowOriginImage: UIImage?
                 
                 if self.mode == .auto {
-                    shadowOriginImage = self.snapshot()
+                    shadowOriginImage = self.snapshot(ratio: 0.5)?.resize(self.bounds.size)
                 } else {
                     shadowOriginImage = self.shadow.customColor?.image(size: self.bounds.size)
                 }
@@ -212,20 +247,23 @@ public extension NSObject {
 }
 
 
-public extension CGRect {
+private extension CGRect {
     init(center: CGPoint, size: CGSize) {
         let point = CGPoint(x: center.x - size.width * 0.5, y: center.y - size.height * 0.5)
         self.init(origin: point, size: size)
     }
 }
 
-public extension UIView {
+private extension UIView {
     
-    func snapshot() -> UIImage? {
-        UIGraphicsBeginImageContextWithOptions(bounds.size, false, UIScreen.main.scale)
+    func snapshot(ratio: CGFloat = 1) -> UIImage? {
+        let `ratio` = min(max(ratio, 0), 1)
+        let size = CGSize(width: ratio * bounds.width, height: ratio * bounds.height)
+        UIGraphicsBeginImageContextWithOptions(size, false, 1)
         guard let ctx = UIGraphicsGetCurrentContext() else {
             return nil
         }
+        ctx.concatenate(CGAffineTransform(scaleX: ratio, y: ratio))
         ctx.interpolationQuality = .low
         layer.render(in: ctx)
         // drawHierarchy(in: bounds, afterScreenUpdates: true)
@@ -236,7 +274,7 @@ public extension UIView {
 }
 
 
-public extension UIImage {
+private extension UIImage {
     
     private var blurIterations: UInt {
         return 3
@@ -341,7 +379,7 @@ public extension UIImage {
 }
 
 
-extension UIImage {
+private extension UIImage {
     func addTransparentSpace(_ space: CGFloat) -> UIImage {
         
         guard space > 0 else { return self }
@@ -369,6 +407,10 @@ extension UIImage {
     func resize(byAdd aWidth: CGFloat) -> UIImage {
         let newSize = CGSize(width: size.width + aWidth,
                              height: size.height * ((size.width + aWidth) / size.width))
+        return resize(newSize)
+    }
+    
+    func resize(_ newSize: CGSize) -> UIImage {
         UIGraphicsBeginImageContextWithOptions(newSize, false, scale)
         draw(in: CGRect(origin: .zero, size: newSize))
         defer { UIGraphicsEndImageContext() }
@@ -380,7 +422,7 @@ extension UIImage {
     }
 }
 
-extension UIColor {
+private extension UIColor {
     
     func image(size: CGSize) -> UIImage? {
         UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)

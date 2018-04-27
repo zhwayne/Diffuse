@@ -14,10 +14,15 @@ class ViewController: UIViewController {
     override func viewDidLoad() {
         super.viewDidLoad()
         // Do any additional setup after loading the view, typically from a nib.
-        let fpsLabel = FPSLabel(frame: CGRect.init(x: 15, y: 25, width: 50, height: 25))
+        let fpsLabel = FPSLabel(frame: CGRect.init(x: 15, y: 25, width: 80, height: 25))
         fpsLabel.textColor = #colorLiteral(red: 0, green: 0, blue: 0, alpha: 1)
         
         view.addSubview(fpsLabel)
+        
+        
+        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+            fpsLabel.removeFromSuperview()
+        }
     }
 
     override func didReceiveMemoryWarning() {
@@ -62,6 +67,10 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         return tableView.dequeueReusableCell(withIdentifier: "cell") as! Cell
     }
     
+    func tableView(_ tableView: UITableView, heightForRowAt indexPath: IndexPath) -> CGFloat {
+        return 180
+    }
+    
     func tableView(_ tableView: UITableView, willDisplay cell: UITableViewCell, forRowAt indexPath: IndexPath) {
         let `cell` = cell as! Cell
         
@@ -73,7 +82,7 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse.shadow.range = 0
         cell.diffuse.shadow.level = 6
         cell.diffuse.shadow.brightness = 0.7
-        cell.diffuse.identify = "\(self.imageNames[indexPath.row])-0"
+//        cell.diffuse.identify = "\(self.imageNames[indexPath.row])-0"
         if let data = self.images[indexPath.row] {
             cell.diffuse.imageView?.image = UIImage(data: data)
         }
@@ -86,7 +95,7 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse2.shadow.range = -2
         cell.diffuse2.shadow.level = 10
         cell.diffuse2.shadow.brightness = 0.9
-        cell.diffuse2.identify = "\(self.imageNames[indexPath.row])-1"
+//        cell.diffuse2.identify = "\(self.imageNames[indexPath.row])-1"
         if let data = self.images[indexPath.row] {
             cell.diffuse2.imageView?.image = UIImage(data: data)
         }
