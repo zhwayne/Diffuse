@@ -18,11 +18,6 @@ class ViewController: UIViewController {
         fpsLabel.textColor = #colorLiteral(red: 0, green: 0, blue: 0, alpha: 1)
         
         view.addSubview(fpsLabel)
-        
-        
-        DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
-            fpsLabel.removeFromSuperview()
-        }
     }
 
     override func didReceiveMemoryWarning() {
