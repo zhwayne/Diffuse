@@ -63,10 +63,12 @@ public final class LazyTask {
                 
                 if _taskSet.count == 0 { return }
                 
-                let newTaskSet = _taskSet
-                _taskSet.removeAll()
-                
-                newTaskSet.forEach { $0.action() }
+                queue.sync {
+                    let newTaskSet = _taskSet
+                    _taskSet.removeAll()
+                    
+                    newTaskSet.forEach { $0.action() }
+                }
             }
             
             CFRunLoopAddObserver(runloop, observer, .commonModes)
