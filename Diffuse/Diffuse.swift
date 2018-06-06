@@ -12,72 +12,6 @@ import QuartzCore
 import Accelerate
 
 
-public typealias DispatchOnceToken = String
-
-public extension DispatchQueue {
-
-    private static var _onceTokenSet = Set<DispatchOnceToken>()
-    
-    public class func once(token: DispatchOnceToken, closure: () -> ()) {
-        objc_sync_enter(self)
-        defer {
-            objc_sync_exit(self)
-        }
-        
-        if _onceTokenSet.contains(token) {
-            return
-        }
-        
-        _onceTokenSet.insert(token)
-        closure()
-    }
-}
-
-
-// stolen from YYAsyncLayer :)
-private class DiffuseTask: Hashable {
-    
-    var hashValue: Int {
-        return (target.hashValue ?? 0) ^ selector.hashValue
-    }
-    static func == (lhs: DiffuseTask, rhs: DiffuseTask) -> Bool {
-        if type(of: rhs) != type(of: lhs) { return false }
-        return lhs.target.isEqual(rhs.target) && lhs.selector == rhs.selector
-    }
-    
-    private static var _taskSet = Set<DiffuseTask>()
-    private var target: AnyObject
-    private var selector: Selector
-    
-    init(target: AnyObject, selector: Selector) {
-        self.target = target
-        self.selector = selector
-    }
-    
-    func commit() {
-        DiffuseTask.listenRunloop(CFRunLoopGetMain())
-        DiffuseTask._taskSet.insert(self)
-    }
-    
-    private static func listenRunloop(_ runloop: CFRunLoop, activity: CFRunLoopActivity = [.beforeWaiting, .exit]) {
-        
-        DispatchQueue.once(token: "listenRunloop") {
-            let observer = CFRunLoopObserverCreateWithHandler(kCFAllocatorDefault, activity.rawValue, true, 0xFFFFFF) { (observer, activity) in
-
-                if _taskSet.count == 0 { return }
-
-                let newTaskSet = _taskSet
-                _taskSet.removeAll()
-                
-                newTaskSet.forEach { _ = $0.target.perform($0.selector) }
-            }
-
-            CFRunLoopAddObserver(runloop, observer, .commonModes)
-        }
-    }
-}
-
-
 /**
  A view with diffuse shadow effects.
  */
@@ -166,7 +100,7 @@ public class Diffuse: UIView {
     
     private func initialize() {
         
-        shadowLayer.contentsGravity = kCAGravityResizeAspectFill
+        shadowLayer.contentsGravity = convertToCALayerContentsGravity(convertFromCALayerContentsGravity(CALayerContentsGravity.resizeAspectFill))
         shadowLayer.contentsScale = UIScreen.main.scale
         shadowLayer.shouldRasterize = true
         shadowLayer.drawsAsynchronously = true
@@ -183,7 +117,9 @@ public class Diffuse: UIView {
     /// Once you have changed some properties, you need to call this method to
     /// update the view for generating new shadows.
     final public func refresh() {
-        DiffuseTask(target: self, selector: #selector(makeTask)).commit()
+        LazyTask { [weak self] in
+            self?.makeTask()
+        }
     }
     
     @objc private func makeTask() {
@@ -202,20 +138,21 @@ public class Diffuse: UIView {
         // First, find blurred image in cache. If not found, create it.
         if let key = self.identify as NSString?,
             let blurredImage = Diffuse.blurredImageCache.object(forKey: key) {
-            self.perform({
+            LazyTask {
                 updateContents(blurredImage.cgImage, shadowSize: blurredImage.size)
-            }, thread: .main, mode: .commonModes)
+            }
             return
         }
         
+        let size = self.bounds.size
         DispatchQueue.global().async {
             autoreleasepool(invoking: { () -> Void in
                 var shadowOriginImage: UIImage?
                 
                 if self.mode == .auto {
-                    shadowOriginImage = self.snapshot(ratio: 0.5)?.resize(self.bounds.size)
+                    shadowOriginImage = self.snapshot(ratio: 0.5)?.resize(size)
                 } else {
-                    shadowOriginImage = self.shadow.customColor?.image(size: self.bounds.size)
+                    shadowOriginImage = self.shadow.customColor?.image(size: size)
                 }
                 shadowOriginImage = shadowOriginImage?.light(level: self.shadow.brightness)
                 
@@ -224,12 +161,12 @@ public class Diffuse: UIView {
                 shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
                 
                 if let shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level)).resize(byAdd: self.shadow.range) {
-                    self.perform({
+                    LazyTask {
                         if let key = self.identify as NSString? {
                             Diffuse.blurredImageCache.setObject(shadowBluredImage, forKey: key)
                         }
                         updateContents(shadowBluredImage.cgImage, shadowSize: shadowBluredImage.size)
-                    }, thread: .main, mode: .commonModes)
+                    }
                 }
             })
         }
@@ -434,3 +371,13 @@ private extension UIColor {
     }
 }
 
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertToCALayerContentsGravity(_ input: String) -> CALayerContentsGravity {
+	return CALayerContentsGravity(rawValue: input)
+}
+
+// Helper function inserted by Swift 4.2 migrator.
+fileprivate func convertFromCALayerContentsGravity(_ input: CALayerContentsGravity) -> String {
+	return input.rawValue
+}

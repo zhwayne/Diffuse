@@ -79,7 +79,7 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse.shadow.brightness = 0.7
 //        cell.diffuse.identify = "\(self.imageNames[indexPath.row])-0"
         if let data = self.images[indexPath.row] {
-            cell.diffuse.imageView?.image = UIImage(data: data)
+            cell.diffuse.imageView.image = UIImage(data: data)
         }
         cell.diffuse.refresh()
         
@@ -92,7 +92,7 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse2.shadow.brightness = 0.9
 //        cell.diffuse2.identify = "\(self.imageNames[indexPath.row])-1"
         if let data = self.images[indexPath.row] {
-            cell.diffuse2.imageView?.image = UIImage(data: data)
+            cell.diffuse2.imageView.image = UIImage(data: data)
         }
         cell.diffuse2.refresh()
         

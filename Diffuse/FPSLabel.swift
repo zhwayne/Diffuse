@@ -17,6 +17,8 @@ class FPSLabelTarget: NSObject {
     private var count: Double = 0
     
     @objc func tick(sender: CADisplayLink) {
+        // Copy from YYKit
+        
         if lastTime == 0 {
             lastTime = sender.timestamp
             return
@@ -34,6 +36,7 @@ class FPSLabelTarget: NSObject {
         }
     }
 }
+
 
 class FPSLabel: UILabel {
 

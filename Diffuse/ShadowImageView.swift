@@ -8,30 +8,45 @@
 
 import UIKit
 
+class MyImageView: UIImageView {
+    
+    override var image: UIImage? {
+        set {
+            imageCopy = newValue
+            LazyTask { [weak self, imageCopy] in
+                self?.layer.contents = imageCopy?.cgImage
+            }
+        }
+        get {
+            return imageCopy
+        }
+    }
+    
+    private var imageCopy: UIImage?
+}
+
 class ShadowImageView: Diffuse {
     
-    var imageView: UIImageView?
+    private(set) var imageView = MyImageView()
     
     override init(frame: CGRect) {
         super.init(frame: frame)
 
-        imageView = UIImageView()
-        imageView?.clipsToBounds = true
-        self.addSubview(imageView!)
+        imageView.clipsToBounds = true
+        self.addSubview(imageView)
     }
     
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
 
-        imageView = UIImageView()
-        imageView?.clipsToBounds = true
-        self.addSubview(imageView!)
+        imageView.clipsToBounds = true
+        self.addSubview(imageView)
     }
     
     
     override func layoutSubviews() {
         super.layoutSubviews()
-        imageView?.frame = bounds
+        imageView.frame = bounds
     }
     
 }
