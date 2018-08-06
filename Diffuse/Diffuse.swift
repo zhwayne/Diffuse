@@ -8,8 +8,10 @@
 
 import UIKit
 import CoreImage
+import CoreGraphics
 import QuartzCore
 import Accelerate
+import RunloopTransaction
 
 
 /**
@@ -84,6 +86,16 @@ public class Diffuse: UIView {
     
     private let shadowLayer: CALayer = CALayer()
     
+    public var contentView = UIView() {
+        didSet {
+            oldValue.removeFromSuperview()
+            contentView.frame = self.bounds
+            contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+            addSubview(contentView)
+            refresh()
+        }
+    }
+    
     public override init(frame: CGRect) {
         super.init(frame: frame)
         initialize()
@@ -100,98 +112,85 @@ public class Diffuse: UIView {
     
     private func initialize() {
         
-        shadowLayer.contentsGravity = convertToCALayerContentsGravity(convertFromCALayerContentsGravity(CALayerContentsGravity.resizeAspectFill))
+        shadowLayer.contentsGravity = kCAGravityResizeAspectFill
         shadowLayer.contentsScale = UIScreen.main.scale
         shadowLayer.shouldRasterize = true
         shadowLayer.drawsAsynchronously = true
         shadowLayer.rasterizationScale = UIScreen.main.scale
         layer.insertSublayer(shadowLayer, at: 0)
         
-    }
-    
-    public override func layoutSubviews() {
-        super.layoutSubviews()
-        refresh()
+        contentView.frame = self.bounds
+        contentView.autoresizingMask = [.flexibleWidth, .flexibleHeight]
+        addSubview(contentView)
     }
     
     /// Once you have changed some properties, you need to call this method to
     /// update the view for generating new shadows.
     final public func refresh() {
-        LazyTask { [weak self] in
-            self?.makeTask()
+        RLTransactionCommit {
+            self.makeTask()
         }
     }
     
     @objc private func makeTask() {
         
         func updateContents(_ contents: CGImage?, shadowSize: CGSize?) {
-            self.shadowLayer.contents = contents
-            self.shadowLayer.opacity = Float(self.shadow.opacity)
-            CATransaction.begin()
-            CATransaction.setAnimationDuration(0)
-            self.shadowLayer.frame = CGRect(center: CGPoint(x: self.bounds.width / 2 + self.shadow.offset.width,
-                                                            y: self.bounds.height / 2 + self.shadow.offset.height),
-                                            size: shadowSize ?? self.bounds.size)
-            CATransaction.commit()
+            RLTransactionCommit {
+                self.shadowLayer.contents = contents
+                self.shadowLayer.opacity = Float(self.shadow.opacity)
+                CATransaction.begin()
+                CATransaction.setAnimationDuration(0)
+                self.shadowLayer.frame = CGRect(center: CGPoint(x: self.bounds.width / 2 + self.shadow.offset.width,
+                                                                y: self.bounds.height / 2 + self.shadow.offset.height),
+                                                size: shadowSize ?? self.bounds.size)
+                CATransaction.commit()
+            }
         }
         
         // First, find blurred image in cache. If not found, create it.
         if let key = self.identify as NSString?,
             let blurredImage = Diffuse.blurredImageCache.object(forKey: key) {
-            LazyTask {
-                updateContents(blurredImage.cgImage, shadowSize: blurredImage.size)
-            }
+            updateContents(blurredImage.cgImage, shadowSize: blurredImage.size)
             return
         }
         
-        let size = self.bounds.size
+        let size = contentView.bounds.size
+        let contentLayer = contentView.layer
         DispatchQueue.global().async {
-            autoreleasepool(invoking: { () -> Void in
-                var shadowOriginImage: UIImage?
-                
-                if self.mode == .auto {
-                    shadowOriginImage = self.snapshot(ratio: 0.5)?.resize(size)
-                } else {
-                    shadowOriginImage = self.shadow.customColor?.image(size: size)
+            var shadowOriginImage: UIImage?
+            
+            if self.mode == .auto {
+                shadowOriginImage = contentLayer.snapshot(ratio: 0.5)?.resize(size)
+            } else {
+                shadowOriginImage = self.shadow.customColor?.image(size: size)
+            }
+            shadowOriginImage = shadowOriginImage?.darker(level: self.shadow.brightness)?.clip(cornerRadius: contentLayer.cornerRadius)
+            
+            
+            var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
+            shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
+            
+            if let shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level)).resize(byAdd: self.shadow.range) {
+                if let key = self.identify as NSString? {
+                    Diffuse.blurredImageCache.setObject(shadowBluredImage, forKey: key)
                 }
-                shadowOriginImage = shadowOriginImage?.light(level: self.shadow.brightness)
-                
-                
-                var shadowWithSpaceImage = shadowOriginImage?.addTransparentSpace(10 + self.shadow.level)
-                shadowWithSpaceImage = shadowWithSpaceImage?.blur(level: self.shadow.level)
-                
-                if let shadowBluredImage = shadowWithSpaceImage?.resize(byAdd: -(self.shadow.level)).resize(byAdd: self.shadow.range) {
-                    LazyTask {
-                        if let key = self.identify as NSString? {
-                            Diffuse.blurredImageCache.setObject(shadowBluredImage, forKey: key)
-                        }
-                        updateContents(shadowBluredImage.cgImage, shadowSize: shadowBluredImage.size)
-                    }
+                DispatchQueue.main.async {
+                    updateContents(shadowBluredImage.cgImage, shadowSize: shadowBluredImage.size)
                 }
-            })
+            }
         }
     }
 }
 
-public extension NSObject {
-    func perform(_ block: @escaping () -> Void, thread: Thread, mode: RunLoopMode) {
-        self.perform(#selector(performBlockWith(object:)), on: thread, with: block, waitUntilDone: false, modes: [mode.rawValue])
-    }
-    
-    @objc private func performBlockWith(object: Any?) {
-        (object as! (() -> Void))()
-    }
-}
 
-
-private extension CGRect {
+fileprivate extension CGRect {
     init(center: CGPoint, size: CGSize) {
         let point = CGPoint(x: center.x - size.width * 0.5, y: center.y - size.height * 0.5)
         self.init(origin: point, size: size)
     }
 }
 
-private extension UIView {
+fileprivate extension CALayer {
     
     func snapshot(ratio: CGFloat = 1) -> UIImage? {
         let `ratio` = min(max(ratio, 0), 1)
@@ -202,8 +201,7 @@ private extension UIView {
         }
         ctx.concatenate(CGAffineTransform(scaleX: ratio, y: ratio))
         ctx.interpolationQuality = .low
-        layer.render(in: ctx)
-        // drawHierarchy(in: bounds, afterScreenUpdates: true)
+        render(in: ctx)
         defer { UIGraphicsEndImageContext() }
         let image = UIGraphicsGetImageFromCurrentImageContext()
         return image
@@ -211,18 +209,10 @@ private extension UIView {
 }
 
 
-private extension UIImage {
+fileprivate extension UIImage {
     
     private var blurIterations: UInt {
         return 3
-    }
-    
-    func blurAsync(level: CGFloat, complate: @escaping (UIImage, UIImage?) -> Void) {
-        
-        DispatchQueue.global(qos: DispatchQoS.QoSClass.userInteractive).async {
-            let image = self.blur(level: level)
-            complate(self, image)
-        }
     }
     
     func blur(level: CGFloat) -> UIImage? {
@@ -296,7 +286,7 @@ private extension UIImage {
         return image
     }
     
-    func light(level: CGFloat) -> UIImage? {
+    func darker(level: CGFloat) -> UIImage? {
         var alpha = 1 - level
         if alpha < 0 { alpha = 0 }
         if alpha > 1 { alpha = 1 }
@@ -316,7 +306,8 @@ private extension UIImage {
 }
 
 
-private extension UIImage {
+fileprivate extension UIImage {
+    
     func addTransparentSpace(_ space: CGFloat) -> UIImage {
         
         guard space > 0 else { return self }
@@ -349,7 +340,22 @@ private extension UIImage {
     
     func resize(_ newSize: CGSize) -> UIImage {
         UIGraphicsBeginImageContextWithOptions(newSize, false, scale)
-        draw(in: CGRect(origin: .zero, size: newSize))
+        let rect = CGRect(origin: .zero, size: newSize)
+        draw(in: rect)
+        defer { UIGraphicsEndImageContext() }
+        if let image = UIGraphicsGetImageFromCurrentImageContext() {
+            return image
+        }
+        
+        return self
+    }
+    
+    func clip(cornerRadius: CGFloat) -> UIImage {
+        UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)
+        let ctx = UIGraphicsGetCurrentContext()
+        let rect = CGRect(origin: .zero, size: size)
+        UIBezierPath(roundedRect: rect, cornerRadius: cornerRadius).addClip()
+        draw(in: rect)
         defer { UIGraphicsEndImageContext() }
         if let image = UIGraphicsGetImageFromCurrentImageContext() {
             return image
@@ -359,25 +365,17 @@ private extension UIImage {
     }
 }
 
-private extension UIColor {
+fileprivate extension UIColor {
     
     func image(size: CGSize) -> UIImage? {
         UIGraphicsBeginImageContextWithOptions(size, false, UIScreen.main.scale)
         let ctx = UIGraphicsGetCurrentContext()
+        let rect = CGRect(origin: .zero, size: size)
         self.setFill()
-        ctx?.fill(CGRect(origin: .zero, size: size))
+        ctx?.fill(rect)
         defer { UIGraphicsEndImageContext() }
-        return UIGraphicsGetImageFromCurrentImageContext()
+        let image = UIGraphicsGetImageFromCurrentImageContext()
+        return image
     }
 }
 
-
-// Helper function inserted by Swift 4.2 migrator.
-fileprivate func convertToCALayerContentsGravity(_ input: String) -> CALayerContentsGravity {
-	return CALayerContentsGravity(rawValue: input)
-}
-
-// Helper function inserted by Swift 4.2 migrator.
-fileprivate func convertFromCALayerContentsGravity(_ input: CALayerContentsGravity) -> String {
-	return input.rawValue
-}

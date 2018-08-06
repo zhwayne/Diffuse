@@ -71,12 +71,12 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         
         cell.diffuse.backgroundColor = nil
         cell.diffuse.mode = .custom
-        cell.diffuse.shadow.customColor = #colorLiteral(red: 1, green: 1, blue: 1, alpha: 1)
-        cell.diffuse.shadow.opacity = 0.8
-        cell.diffuse.shadow.offset = CGSize(width: 4, height: 8)
-        cell.diffuse.shadow.range = 0
-        cell.diffuse.shadow.level = 6
-        cell.diffuse.shadow.brightness = 0.7
+        cell.diffuse.shadow.customColor = #colorLiteral(red: 0.8039215803, green: 0.8039215803, blue: 0.8039215803, alpha: 1)
+        cell.diffuse.shadow.opacity = 0.7
+        cell.diffuse.shadow.offset = CGSize(width: 0, height: 10)
+        cell.diffuse.shadow.range = -2
+        cell.diffuse.shadow.level = 14
+        cell.diffuse.shadow.brightness = 0.5
 //        cell.diffuse.identify = "\(self.imageNames[indexPath.row])-0"
         if let data = self.images[indexPath.row] {
             cell.diffuse.imageView.image = UIImage(data: data)
@@ -88,7 +88,7 @@ extension ViewController : UITableViewDelegate, UITableViewDataSource {
         cell.diffuse2.shadow.opacity = 0.7
         cell.diffuse2.shadow.offset = CGSize(width: 0, height: 12)
         cell.diffuse2.shadow.range = -2
-        cell.diffuse2.shadow.level = 10
+        cell.diffuse2.shadow.level = 14
         cell.diffuse2.shadow.brightness = 0.9
 //        cell.diffuse2.identify = "\(self.imageNames[indexPath.row])-1"
         if let data = self.images[indexPath.row] {

@@ -1,0 +1,6 @@
+framework module RunloopTransaction {
+  umbrella header "RunloopTransaction.h"
+
+  export *
+  module * { export * }
+}

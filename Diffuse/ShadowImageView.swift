@@ -7,14 +7,15 @@
 //
 
 import UIKit
+import RunloopTransaction
 
 class MyImageView: UIImageView {
     
     override var image: UIImage? {
         set {
             imageCopy = newValue
-            LazyTask { [weak self, imageCopy] in
-                self?.layer.contents = imageCopy?.cgImage
+            RLTransactionCommit {
+                self.layer.contents = self.imageCopy?.cgImage
             }
         }
         get {
@@ -33,20 +34,17 @@ class ShadowImageView: Diffuse {
         super.init(frame: frame)
 
         imageView.clipsToBounds = true
-        self.addSubview(imageView)
+        contentView = imageView
+        contentView.clipsToBounds = true
+        contentView.layer.cornerRadius = 16
     }
     
     required public init?(coder aDecoder: NSCoder) {
         super.init(coder: aDecoder)
 
         imageView.clipsToBounds = true
-        self.addSubview(imageView)
-    }
-    
-    
-    override func layoutSubviews() {
-        super.layoutSubviews()
-        imageView.frame = bounds
-    }
-    
+        contentView = imageView
+        contentView.clipsToBounds = true
+        contentView.layer.cornerRadius = 16
+    }    
 }
