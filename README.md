@@ -14,11 +14,7 @@ PNG
 
 ## 使用
 
-`Diffuse` 派生自 `UIView`，你可以继承它设置各种属性，最后记得调用 `refresh()` 方法就好。
+`Diffuse` 派生自 `UIView`，你可以重新设置其 `contentView` 属性(推荐做法)，或者在其上添加 subview，最后记得调用 `refresh()` 方法刷新阴影。
 
-## 接下来的工作
-
-* 支持圆角
- 
-
+ > 注意：如果你需要圆角效果，可以对 `contentView` 做相应设置，不要直接修改 Diffuse 及其子类，这样做会引发一些未定义的问题。
 
